@@ -15,34 +15,6 @@ def to_snake_case(str_list: List[str]) -> list:
     return [str_.lower().replace(' ', '_') for str_ in str_list]
 
 
-def download_freddie_data(cookie: str, directory: str):
-    """
-    Downloads entire loan level data set for standard and non-standard loans.
-    :param cookie: A php session id to allow auth.
-    :param directory: The directory to save all the data.
-    :return: None
-    """
-    base_url = 'https://freddiemac.embs.com/FLoan/Data/downloadA.php'
-    with requests.Session() as s:
-        response = s.post(base_url
-                          , headers={'Cookie': cookie})  # using temp cookie for auth
-        soup = BeautifulSoup(response.text)
-
-        for url in soup.find_all('a'):
-            download_url = url.get('href')
-            local_filename = (re.search('(?<=\?)(.*?)(?=\&)', download_url)).group()
-
-            if str(download_url).find('=historical') == -1:
-                continue
-            else:
-                with s.get('https://freddiemac.embs.com/FLoan/Data/' + download_url
-                           , stream=True
-                           , headers={'Cookie': 'PHPSESSID=eteuarnhl0slk0gug92030lob2'}) as dl_response:
-                    with open(f'{dir}{local_filename[2:]}.zip', 'wb') as file:
-                        for chunk in dl_response.iter_content(chunk_size=1_000_000_000):
-                            file.write(chunk)
-
-
 class DataPipe:
     """
     Class to manage data preprocessing for Freddie Mac loan level data.
@@ -54,6 +26,7 @@ class DataPipe:
     directory: str
             The path to a folder holding all the Freddie Mac data.
     """
+
     def __init__(self, directory: str, headers: Dict[str, List[str]]):
         self.raw_data = self.append_all_files_as_df(directory, headers)
 
@@ -84,13 +57,13 @@ class DataPipe:
                 else:
                     header = headers['time_series']
                     df_time_series_appender = pd.read_csv(relative_path
-                                                                      , names=header
-                                                                      , index_col=False
-                                                                      , sep='|')
+                                                          , names=header
+                                                          , index_col=False
+                                                          , sep='|')
                     df_time_series.append(df_time_series_appender)
 
         return {'time_series': df_time_series
-                , 'origination': df_origination}
+            , 'origination': df_origination}
 
     def clean(self):
         """
@@ -114,26 +87,26 @@ if __name__ == '__main__':
     # defined in the SFLLD User Guide
     # http://www.freddiemac.com/fmac-resources/research/pdf/user_guide.pdf
     time_series_headers = ['LOAN SEQUENCE NUMBER', 'MONTHLY REPORTING PERIOD'
-                           , 'CURRENT ACTUAL UPB', 'CURRENT LOAN DELINQUENCY STATUS'
-                           , 'LOAN AGE', 'REMAINING MONTHS TO LEGAL MATURITY'
-                           , 'REPURCHASE FLAG', 'MODIFICATION FLAG'
-                           , 'ZERO BALANCE CODE', 'CURRENT INTEREST RATE'
-                           , 'CURRENT DEFERRED UPB', 'DUE DATE OF LAST PAID INSTALLMENT (DDLPI)'
-                           , 'MI RECOVERIES', 'NET SALES PROCEEDS', 'NON MI RECOVERIES'
-                           , 'EXPENSES', 'LEGAL COSTS', 'MAINTENANCE AND PRESERVATION COSTS'
-                           , 'TAXES AND INSURANCE', 'MISCELLANEOUS EXPENSES'
-                           , 'ACTUAL LOSS CALCULATION', 'MODIFICATION COST'
-                           , 'STEP MODIFICATION FLAG', 'DEFERRED PAYMENT PLAN'
-                           , 'ESTIMATED LOAN TO VALUE (ELTV)', 'ZERO BALANCE REMOVAL UPB'
-                           , 'DELINQUENT ACCRUED INTEREST', 'DELINQUENCY DUE TO DISASTER'
-                           , 'BORROWER ASSISTANCE STATUS CODE', 'CURRENT MONTH MODIFICATION COST']
+        , 'CURRENT ACTUAL UPB', 'CURRENT LOAN DELINQUENCY STATUS'
+        , 'LOAN AGE', 'REMAINING MONTHS TO LEGAL MATURITY'
+        , 'REPURCHASE FLAG', 'MODIFICATION FLAG'
+        , 'ZERO BALANCE CODE', 'CURRENT INTEREST RATE'
+        , 'CURRENT DEFERRED UPB', 'DUE DATE OF LAST PAID INSTALLMENT (DDLPI)'
+        , 'MI RECOVERIES', 'NET SALES PROCEEDS', 'NON MI RECOVERIES'
+        , 'EXPENSES', 'LEGAL COSTS', 'MAINTENANCE AND PRESERVATION COSTS'
+        , 'TAXES AND INSURANCE', 'MISCELLANEOUS EXPENSES'
+        , 'ACTUAL LOSS CALCULATION', 'MODIFICATION COST'
+        , 'STEP MODIFICATION FLAG', 'DEFERRED PAYMENT PLAN'
+        , 'ESTIMATED LOAN TO VALUE (ELTV)', 'ZERO BALANCE REMOVAL UPB'
+        , 'DELINQUENT ACCRUED INTEREST', 'DELINQUENCY DUE TO DISASTER'
+        , 'BORROWER ASSISTANCE STATUS CODE', 'CURRENT MONTH MODIFICATION COST']
     origination_headers = []
 
     time_series_headers_adjusted = to_snake_case(time_series_headers)
     origination_headers_adjusted = to_snake_case(origination_headers)
 
     headers_dict = {'time_series': time_series_headers_adjusted
-                    , 'origination': origination_headers_adjusted}
+        , 'origination': origination_headers_adjusted}
 
     dir_ = '../../data/'
 
@@ -142,4 +115,3 @@ if __name__ == '__main__':
     print(datapipe.raw_data['time_series'].head())
 
     pass
-
