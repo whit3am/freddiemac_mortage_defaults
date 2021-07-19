@@ -24,7 +24,7 @@ def download_freddie_data(cookie: str, directory: str):
             else:
                 with s.get('https://freddiemac.embs.com/FLoan/Data/' + download_url
                            , stream=True
-                           , headers={'Cookie': 'PHPSESSID=eteuarnhl0slk0gug92030lob2'}) as dl_response:
+                           , headers={'Cookie': cookie}) as dl_response:
                     with open(f'{directory}{local_filename[2:]}.zip', 'wb') as file:
                         for chunk in dl_response.iter_content(chunk_size=1_000_000_000):
                             file.write(chunk)
@@ -34,7 +34,7 @@ def unzip_contents(content, byte=True):
     """
     unzips a file/folder.
     :param content: compressed contents as a byte or string,
-    :param byte:
+    :param byte: True if the contents are in byte formatted, False if they are in string format.
     :return: unzipped data.
     """
     import gzip

@@ -1,9 +1,6 @@
 import os
-from typing import List, Dict
+from typing import List
 import pandas as pd
-from bs4 import BeautifulSoup
-import requests
-import re
 
 
 def to_snake_case(str_list: List[str]) -> list:
@@ -15,78 +12,29 @@ def to_snake_case(str_list: List[str]) -> list:
     return [str_.lower().replace(' ', '_') for str_ in str_list]
 
 
-class DataPipe:
+class DataPipeXY:
     """
-    Class to manage data preprocessing for Freddie Mac loan level data.
-
-    Parameters
-    ----------
-    headers: Dict[str, List[str]]
-            The headers used to.
-    directory: str
-            The path to a folder holding all the Freddie Mac data.
+    Datapipe for predicting if a loan will ever go over 90 days late on its payments from origination data. This
+    class builds X and y for the dataset where X is the data for learning and y is the target variable 1 or 0;
+    1 if the loan has ever been over 89 days late, and zero otherwise.
     """
 
-    def __init__(self, directory: str, headers: Dict[str, List[str]]):
-        self.raw_data = self.append_all_files_as_df(directory, headers)
-
-    @staticmethod
-    def append_all_files_as_df(directory, headers):
-        """
-        Runs at initialization--builds two dataframes from the time series and origination data in the target folders.
-        The directory must break out the
-        :param directory:
-        :param headers:
-        :return:
-        """
-        df_time_series = pd.DataFrame()
-        df_origination = pd.DataFrame()
-        print(os.walk(directory))
-        for path_object in os.walk(directory):
-            print(path_object)
-            folder = path_object[0]
-            for file in path_object[2]:
-                relative_path = folder + '/' + file
-                if file.find('excl') == -1:
-                    header = headers['origination']
-                    df_origination_appender = pd.read_csv(relative_path
-                                                          , names=header
-                                                          , index_col=False
-                                                          , sep='|')
-                    df_origination.append(df_origination_appender)
-                else:
-                    header = headers['time_series']
-                    df_time_series_appender = pd.read_csv(relative_path
-                                                          , names=header
-                                                          , index_col=False
-                                                          , sep='|')
-                    df_time_series.append(df_time_series_appender)
-
-        return {'time_series': df_time_series
-            , 'origination': df_origination}
-
-    def clean(self):
-        """
-        Executes the provided sql query.
-
-        Parameters
-        ----------
-        sql_query: SqlQuery or None
-            If None--defaults to the original sql query given. The only reason an additional sql query is given is
-            to break up the date range after a Java Heap error--this tends to be from trying to collect too much data
-            at once.
-
-        Returns
-        -------
-        spark.sql.DataFrame object defined by our data and the sql query that is ran against that data.
-        """
-        pass
-
-
-if __name__ == '__main__':
-    # defined in the SFLLD User Guide
-    # http://www.freddiemac.com/fmac-resources/research/pdf/user_guide.pdf
-    time_series_headers = ['LOAN SEQUENCE NUMBER', 'MONTHLY REPORTING PERIOD'
+    def __init__(self):
+        # hardcoded col names for the txt files we load in.
+        self.X_header = to_snake_case(['CREDIT SCORE', 'FIRST PAYMENT DATE', 'FIRST TIME HOMEBUYER FLAG'
+        , 'MATURITY DATE', 'METROPOLITAN STATISTICAL AREA (MSA) OR METROPOLITAN DIVISION'
+        , 'MORTGAGE INSURANCE PERCENTAGE (MI %)', 'NUMBER OF UNITS'
+        , 'OCCUPANCY STATUS', 'ORIGINAL COMBINED LOAN-TO-VALUE (CLTV)'
+        , 'ORIGINAL DEBT-TO-INCOME (DTI) RATIO', 'ORIGINAL UPB'
+        , 'ORIGINAL LOAN-TO-VALUE (LTV)', 'ORIGINAL INTEREST RATE'
+        , 'CHANNEL', 'PREPAYMENT PENALTY MORTGAGE (PPM) FLAG', 'AMORTIZATION TYPE'
+        , 'PROPERTY STATE', 'PROPERTY TYPE', 'POSTAL CODE', 'LOAN SEQUENCE NUMBER'
+        , 'LOAN PURPOSE', 'ORIGINAL LOAN TERM', 'NUMBER OF BORROWERS'
+        , 'SELLER NAME', 'SERVICER NAME', 'SUPER CONFORMING FLAG'
+        , 'Pre-HARP LOAN SEQUENCE NUMBER', 'PROGRAM INDICATOR', 'HARP INDICATOR'
+        , 'PROPERTY VALUATION METHOD', 'INTEREST ONLY INDICATOR (I/O INDICATOR)'
+                           ])
+        self.y_header = to_snake_case(['LOAN SEQUENCE NUMBER', 'MONTHLY REPORTING PERIOD'
         , 'CURRENT ACTUAL UPB', 'CURRENT LOAN DELINQUENCY STATUS'
         , 'LOAN AGE', 'REMAINING MONTHS TO LEGAL MATURITY'
         , 'REPURCHASE FLAG', 'MODIFICATION FLAG'
@@ -99,19 +47,139 @@ if __name__ == '__main__':
         , 'STEP MODIFICATION FLAG', 'DEFERRED PAYMENT PLAN'
         , 'ESTIMATED LOAN TO VALUE (ELTV)', 'ZERO BALANCE REMOVAL UPB'
         , 'DELINQUENT ACCRUED INTEREST', 'DELINQUENCY DUE TO DISASTER'
-        , 'BORROWER ASSISTANCE STATUS CODE', 'CURRENT MONTH MODIFICATION COST']
-    origination_headers = []
+        , 'BORROWER ASSISTANCE STATUS CODE', 'CURRENT MONTH MODIFICATION COST'
+                           ])
 
-    time_series_headers_adjusted = to_snake_case(time_series_headers)
-    origination_headers_adjusted = to_snake_case(origination_headers)
+        self.X = None
+        self.y = None
+        self.Xy = None
 
-    headers_dict = {'time_series': time_series_headers_adjusted
-        , 'origination': origination_headers_adjusted}
+    def build_x(self, directory):
+        header = self.X_header
+        df_origination = pd.DataFrame()
 
-    dir_ = '../../data/'
+        for path_object in os.walk(directory):
+            folder = path_object[0]
+            for file in path_object[2]:
+                if file[-4:] == '.txt':
+                    relative_path = folder + '/' + file
+                    if file.find('time') == -1:
+                        print('origination:', file)
+                        df_origination_appender = pd.read_csv(relative_path
+                                                              , names=header
+                                                              , index_col=False
+                                                              , sep='|')
+                        df_origination = df_origination.append(df_origination_appender)
+        self.X = df_origination
 
-    datapipe = DataPipe(dir_, headers_dict)
-    print([folder_obj for folder_obj in os.walk(dir_)])
-    print(datapipe.raw_data['time_series'].head())
+    def build_y(self, directory):
+        """
+        Navigates all sub directories looking for time series data, then determines if a loan has ever been
+        over n days late. n is currently set at 90 days via: x in ['0', '1', '2']
+        :return: a dict with the account id as the key, and the value 1 or 0 determining if that account
+                 has ever been 90 days late or more.
+        """
+        header = self.y_header
+        y = {}
+        days_late_values = ['0', '1', '2'] # see freddie mac data dictionary
+        for path_object in os.walk(directory):
+            folder = path_object[0]
+            for file in path_object[2]:
+                if file[-4:] == '.txt':
+                    relative_path = folder + '/' + file
+                    if file.find('time') != -1:
+                        print('time series:', file)
+                        df_time_series = pd.read_csv(relative_path
+                                                      , names=header
+                                                      , index_col=False
+                                                      , sep='|')
+                        df_gb = df_time_series.groupby('loan_sequence_number')
+                        for name, group in df_gb:
+                            if name in y.keys():
+                                if y[name] == 1:
+                                    continue
+                            if all(status in days_late_values for status in group['current_loan_delinquency_status']):
+                                delinquent = 0
+                            else:
+                                delinquent = 1
+                            y[name] = delinquent
+                        del df_time_series, df_gb  # ensures garbage collection (I think)
+        self.y = y
 
+    def build_xy(self):
+        """
+        Matches the correct outcome (target variable) to the dependent data.
+        :return: sets attribute Xy
+        """
+        X = self.X.copy()
+        y = self.y
+        if y is None:
+            raise ValueError('y has not been set yet')
+
+        X['target'] = X['loan_sequence_number'].map(y)
+
+        self.Xy = X
+
+    @staticmethod
+    def export_csv(data: pd.DataFrame, path: str):
+        """
+        Exports dataframe as a csv.
+        :param data: data to upload as a csv
+        :param path: where to upload the csv
+        :return:
+        """
+        data.to_csv(path)
+
+
+class Preprocessor:
+    """
+    Not finished
+    """
+    def __init__(self, data, transformations, nulls, dimensionality_reduction, dummy_variables):
+        self.data = data
+        self.transformations = transformations
+        self.nulls = nulls
+        self.dimensionality_reduction = dimensionality_reduction
+        self.dummy_variables = dummy_variables
+        self.outliers = None
+        pass
+
+
+class ClassificationModelExperiment:
+    """
+    Not finished
+    Class to guide model development. Accepts a handful of parameters useful in determining what type of models,
+    preprocessing, hyperparams, etc impact performance.
+    """
+    def __init__(self, X: pd.DataFrame, y: pd.DataFrame, models: List
+                 , preprocessing: Preprocessor, imbalanced_learning: list, sample_size: int):
+        self.X = X
+        self.y = y
+        self.sample_size = sample_size
+        self.preprocessing = preprocessing
+        self.imbalanced_learning = imbalanced_learning
+        self.models = models
+        self.X_train = None
+        self.X_test = None
+        self.y_train = None
+        self.y_test = None
+        self.trained_models = None
+
+    def preprocess(self):
+        pass
+
+    def train_test_split(self):
+        # class imbalances
+        pass
+
+    def test_models(self):
+        pass
+
+    def train_models(self):
+        pass
+
+    def score_models(self):
+        pass
+
+if __name__ == '__main__':
     pass
