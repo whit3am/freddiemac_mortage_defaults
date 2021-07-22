@@ -49,6 +49,7 @@ class DataPipeXY:
         , 'DELINQUENT ACCRUED INTEREST', 'DELINQUENCY DUE TO DISASTER'
         , 'BORROWER ASSISTANCE STATUS CODE', 'CURRENT MONTH MODIFICATION COST'
                            ])
+        self.use_cols_y = ['current_loan_delinquency_status', 'loan_sequence_number']
 
         self.X = None
         self.y = None
@@ -79,6 +80,7 @@ class DataPipeXY:
         :return: a dict with the account id as the key, and the value 1 or 0 determining if that account
                  has ever been 90 days late or more.
         """
+        use_cols = self.use_cols_y
         header = self.y_header
         y = {}
         days_late_values = ['0', '1', '2'] # see freddie mac data dictionary
@@ -92,7 +94,8 @@ class DataPipeXY:
                         df_time_series = pd.read_csv(relative_path
                                                       , names=header
                                                       , index_col=False
-                                                      , sep='|')
+                                                      , sep='|'
+                                                      , usecols=use_cols)
                         df_gb = df_time_series.groupby('loan_sequence_number')
                         for name, group in df_gb:
                             if name in y.keys():
@@ -180,6 +183,7 @@ class ClassificationModelExperiment:
 
     def score_models(self):
         pass
+
 
 if __name__ == '__main__':
     pass
