@@ -111,7 +111,7 @@ class DataPipeXY:
 
     def build_xy(self):
         """
-        Matches the correct outcome (target variable) to the dependent data.
+        Matches the correct outcome (target variable) to the independent data.
         :return: sets attribute Xy
         """
         X = self.X.copy()
