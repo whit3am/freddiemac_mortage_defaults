@@ -12,9 +12,9 @@ data directory.
 Below explains the problem setup, results, and methods.
 
 ## Problem set up
-I wanted to see if loan level data from 1999-2001 could be used to
-predict late payments for years outside that range. The goal is to
-predict if a loan has ever been over 89 days late or not.
+The goal is to predict if a loan has ever been over 89 days late or not. In addition
+I wanted to see if loan level data from 1999-2001 could be used to predict late payments 
+for years outside that range and what that decay in performance looks like. 
 
 ## Results
 
@@ -22,19 +22,6 @@ The metric used was f1 score as both recall and precision are
 important here. Accuracy would be useless as the dataset is
 imbalanced. 
 
-The first set of models were trained on the following variables:
-
-    original_combined_loan-to-value_(cltv) 
-    original_debt-to-income_(dti)_ratio      
-    original_upb                             
-    original_loan-to-value_(ltv)             
-    credit_score                        
-    number_of_units                     
-    original_interest_rate               
-    number_of_borrowers 
-
-These were already in numeric format with no nulls,
-so they were easy to throw into a model.
 
 ### Test Error (1999-2001)
 
@@ -62,20 +49,45 @@ From the charts above it is clear that the models were unable to
 generalize beyond the years their training data encompassed.
 
 ## Methods
-   To be added...
+
+### Baseline model
+Our baseline model was a random binomial model with `count(late_loans) / count(loans)`
+used as the chance of success and `count(loans)` used as the number of trials.
+
 ### Quick No Preprocessing Models
-   To be added...
+   The first set of models were trained on the following variables:
+
+    original_combined_loan-to-value_(cltv) 
+    original_debt-to-income_(dti)_ratio      
+    original_upb                             
+    original_loan-to-value_(ltv)             
+    credit_score                        
+    number_of_units                     
+    original_interest_rate               
+    number_of_borrowers 
+
+These were already in numeric format with no real nulls--nulls were often labelled
+something like 9999 or 999--so they were easy to throw into a model just to see what
+type of performance we can expect.
+
+
 ### Preprocessing
-   To be added...
+Preprocessing was mostly null imputing and featuring engineering the dates. This provided
+a 10% boost to our f1 score.
 ### Imbalanced Data
-   To be added...
+Multiple over and under-sampling methods we tested. ADASYN and SMOTE provided the largest
+performance boost with ADASYN edging out SMOTE on most CV sets.
 ## Future Work
 
 1. Dimensionality Reduction
 2. Custom Balancing
 3. Use all the other classification methods (boosted trees, neural nets
    , etc)
-4. Reframe solution to predict next quarter's/year's loans that will 
+4. Normalize the data (at least for the logistic regression)
+5. Recall and precision were not directly reported above, but some interesting results
+   should be further investigated: some models produced higher recall, and some higher
+   precision, likely meaning there is some benefit of ensembling the two approaches.
+6. Reframe solution to predict next quarter's/year's loans that will 
    be late and roll that forward after each time period. This would 
    allow more data to flow into the model via added exogenous 
    variables like forecasted GDP increases and the previous payment
